@@ -1,0 +1,28 @@
+# Dependencias (Casi lo más importante)
+node_modules
+npm-debug.log
+yarn-error.log
+
+# Salidas de compilación
+dist
+.angular
+.cache
+
+# Configuración de Git
+.git
+.gitignore
+
+# Archivos de entorno y secretos
+.env
+.env.*
+!.env.production
+
+# Docker files (No son necesarios dentro de la imagen)
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Pruebas y documentación
+coverage
+test
+*.md
