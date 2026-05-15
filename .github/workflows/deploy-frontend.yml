@@ -47,5 +47,6 @@ jobs:
               "docker pull ${{ steps.login-ecr.outputs.registry }}/casino-frontend:latest",
               "docker stop frontend || true",
               "docker rm frontend || true",
-              "docker run -d --restart unless-stopped --network casino-net --name frontend -p 80:80 ${{ steps.login-ecr.outputs.registry }}/casino-frontend:latest"
+             
+              "docker run -d --restart unless-stopped --network casino-net --name frontend -p 80:8080 ${{ steps.login-ecr.outputs.registry }}/casino-frontend:latest"
             ]}'
