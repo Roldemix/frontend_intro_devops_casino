@@ -1,40 +1,50 @@
-name: Deploy Casino Frontend
+name: Deploy Frontend
 
 on:
   push:
-    branches:
-      - deploy
-  workflow_dispatch:
+    branches: [ "deploy" ]
 
 jobs:
-  deploy-frontend:
+  build-and-deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v4
 
+      # ESTE PASO ES VITAL: Inyecta la IP del backend antes de compilar
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Get AWS account id
-        run: echo "AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)" >> $GITHUB_ENV
-
-      - name: Update frontend container on instances via SSM
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+        - name: Create .env file
         run: |
-          ACCOUNT=${{ env.AWS_ACCOUNT_ID }}
-          REGION=${{ secrets.AWS_REGION }}
-          FRONTEND_IMAGE="$ACCOUNT.dkr.ecr.$REGION.amazonaws.com/casino-frontend:latest"
+          echo "VITE_API_URL=http://${{ secrets.BACKEND_IP }}:3000" > .env
+          echo "REACT_APP_API_URL=http://${{ secrets.BACKEND_IP }}:3000" >> .env
+
+      - name: Build and Push to ECR
+        run: |
+          docker build -t casino-frontend .
+          docker tag casino-frontend:latest ${{ steps.login-ecr.outputs.registry }}/casino-frontend:latest
+          docker push ${{ steps.login-ecr.outputs.registry }}/casino-frontend:latest
+
+      - name: Deploy to EC2 via SSM
+        run: |
           aws ssm send-command \
+            --instance-ids ${{ secrets.EC2_FRONTEND_INSTANCE_ID }} \
             --document-name "AWS-RunShellScript" \
-            --comment "Update casino frontend container" \
-            --targets "Key=tag:Role,Values=casino" \
-            --parameters commands=["docker login -u AWS -p $(aws ecr get-login-password --region $REGION) $ACCOUNT.dkr.ecr.$REGION.amazonaws.com","docker pull $FRONTEND_IMAGE","docker rm -f frontend || true","docker run -d --restart unless-stopped --name frontend -p 8080:80 $FRONTEND_IMAGE"] \
-            --region $REGION
-
-      - name: Describe stack outputs
-        run: |
-          aws cloudformation describe-stacks --stack-name casino --query "Stacks[0].Outputs" --output table || true
+            --parameters '{"commands":[
+              "sudo chmod 666 /var/run/docker.sock",
+              "docker network create casino-net || true",
+              "aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ steps.login-ecr.outputs.registry }}",
+              "docker pull ${{ steps.login-ecr.outputs.registry }}/casino-frontend:latest",
+              "docker stop frontend || true",
+              "docker rm frontend || true",
+              "docker run -d --restart unless-stopped --network casino-net --name frontend -p 80:8080 ${{ steps.login-ecr.outputs.registry }}/casino-frontend:latest"
+            ]}'
