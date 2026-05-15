@@ -11,7 +11,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # ESTE PASO ES VITAL: Inyecta la IP del backend antes de compilar
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -23,7 +22,9 @@ jobs:
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
-        - name: Create .env file
+
+      # CORREGIDO: Ahora el paso está bien alineado
+      - name: Create .env file
         run: |
           echo "VITE_API_URL=http://${{ secrets.BACKEND_IP }}:3000" > .env
           echo "REACT_APP_API_URL=http://${{ secrets.BACKEND_IP }}:3000" >> .env
