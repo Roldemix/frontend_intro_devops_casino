@@ -1,4 +1,4 @@
-name: Deploy Frontend #a
+name: Deploy Frontend 
 
 on:
   push:
