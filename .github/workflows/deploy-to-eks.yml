@@ -2,7 +2,7 @@ name: Build and Deploy to EKS
 
 on:
   push:
-    branches: [ deploy ]
+    branches: [ deploy-2 ]
 
 env:
   AWS_REGION: us-east-1
