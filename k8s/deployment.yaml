@@ -4,7 +4,9 @@ metadata:
   name: frontend
   namespace: casino
 spec:
-  replicas: 2
+  replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: frontend
@@ -15,6 +17,6 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: casino/frontend:latest
+          image: 851725353324.dkr.ecr.us-east-1.amazonaws.com/casino/frontend:latest
           ports:
             - containerPort: 8080
